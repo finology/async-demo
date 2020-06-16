@@ -23,7 +23,8 @@ import java.util.concurrent.TimeUnit;
 public class AsyncServiceImpl implements AsyncService {
 
     @Autowired
-    private AsyncServiceImpl asyncService;
+    private AsyncHelper asyncHelper;
+
 
     @Override
     public void syncNoReturn() {
@@ -39,7 +40,7 @@ public class AsyncServiceImpl implements AsyncService {
     @Override
     public void asyncNoReturn() {
         try {
-            TimeUnit.SECONDS.sleep(1);
+            TimeUnit.SECONDS.sleep(3);
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
@@ -60,14 +61,18 @@ public class AsyncServiceImpl implements AsyncService {
 
     @Override
     public Map<String, Object> asyncReturn2() {
+
+        long start = System.currentTimeMillis();
         List<Future<String>> futures = new ArrayList();
+
         for (int i = 0; i < 10; i++) {
-            Future<String> future = asyncService.asyncReturn(i);
+//            Future<String> future = asyncService.asyncReturn(i);
+            Future<String> future = asyncHelper.asyncReturn(i);
             futures.add(future);
         }
 
         List<String> response = new ArrayList<>();
-        for (Future<String> future: futures) {
+        for (Future<String> future : futures) {
             try {
                 response.add(future.get());
             } catch (InterruptedException e) {
@@ -77,10 +82,8 @@ public class AsyncServiceImpl implements AsyncService {
             }
         }
 
-        long end = System.currentTimeMillis();
-
         Map<String, Object> map = new HashMap<>();
-        String res = "time cost: " + (end - System.currentTimeMillis());
+        String res = "time cost: " + (System.currentTimeMillis() - start);
         map.put("data", response);
         map.put("cost", res);
         return map;

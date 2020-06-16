@@ -1,6 +1,6 @@
 package gy.finolo.asyncdemo.controller;
 
-import gy.finolo.asyncdemo.service.impl.AsyncServiceImpl;
+import gy.finolo.asyncdemo.service.AsyncService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -21,7 +21,7 @@ import java.util.concurrent.Future;
 public class AsyncController {
 
     @Autowired
-    private AsyncServiceImpl asyncService;
+    private AsyncService asyncService;
 
     @GetMapping("sync-no-return")
     public String testSyncNoReturn() {
