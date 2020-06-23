@@ -65,7 +65,7 @@ public class AsyncServiceImpl implements AsyncService {
         long start = System.currentTimeMillis();
         List<Future<String>> futures = new ArrayList();
 
-        for (int i = 0; i < 10; i++) {
+        for (int i = 0; i < 4; i++) {
 //            Future<String> future = asyncService.asyncReturn(i);
             Future<String> future = asyncHelper.asyncReturn(i);
             futures.add(future);
@@ -76,9 +76,16 @@ public class AsyncServiceImpl implements AsyncService {
             try {
                 response.add(future.get());
             } catch (InterruptedException e) {
-                e.printStackTrace();
+//                e.printStackTrace();
             } catch (ExecutionException e) {
-                e.printStackTrace();
+//                e.printStackTrace();
+                for (Future<String> f : futures) {
+                    if (!f.isDone()) {
+                        System.out.println("cancel " + f);
+                        f.cancel(true);
+                    }
+                }
+                throw new RuntimeException("xxx");
             }
         }
 
@@ -87,5 +94,9 @@ public class AsyncServiceImpl implements AsyncService {
         map.put("data", response);
         map.put("cost", res);
         return map;
+    }
+
+    public static void main(String[] args) {
+        System.out.println(Runtime.getRuntime().availableProcessors());
     }
 }

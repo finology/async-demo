@@ -17,10 +17,15 @@ public class AsyncHelper {
 
     @Async
     public Future<String> asyncReturn(int i) {
+
+       /* if (i == 0) {
+            int j = 1 / 0;
+        }*/
         try {
             TimeUnit.SECONDS.sleep(1);
         } catch (InterruptedException e) {
-            e.printStackTrace();
+//            e.printStackTrace();
+            return null;
         }
 
         return new AsyncResult<>("async with return: " + i);

@@ -27,27 +27,31 @@ public class Threader2 {
          */
         List<Future<Void>> results = new ArrayList<Future<Void>>();
 
-        for (int i = 0; i < 3; i++) {
+        for (int i = 0; i < 6; i++) {
             final int callableNumber = i;
 
             results.add(completionService.submit(new Callable<Void>() {
 
                                                      @Override
                                                      public Void call() throws Exception {
-                                                         System.out.println("Task " + callableNumber
-                                                                 + " in progress");
+                                                         System.out.println(System.currentTimeMillis() + " Task " + callableNumber
+                                                                 + " starts");
+                                                         if (callableNumber == 0) {
+                                                             throw new Exception(System.currentTimeMillis() + " Wrong answer for task "
+                                                                     + callableNumber);
+                                                         }
+
                                                          try {
-                                                             Thread.sleep(callableNumber * 1000);
+                                                             Thread.sleep(callableNumber * 1000 + 1000);
                                                          } catch (InterruptedException ex) {
-                                                             System.out.println("Task " + callableNumber
+                                                             System.out.println(System.currentTimeMillis() + " Task " + callableNumber
                                                                      + " cancelled");
                                                              return null;
                                                          }
-                                                         if (callableNumber == 1) {
-                                                             throw new Exception("Wrong answer for task "
-                                                                     + callableNumber);
-                                                         }
-                                                         System.out.println("Task " + callableNumber + " complete");
+
+
+
+                                                         System.out.println(System.currentTimeMillis() + " Task " + callableNumber + " complete");
                                                          return null;
                                                      }
                                                  }
@@ -66,33 +70,41 @@ public class Threader2 {
                 }
             }*/
 
-        for (int i = 0; i < 3; i++) {
+        for (int i = 0; i < 6; i++) {
             try {
                 /*
                  * Examine results of next completed task
                  */
-                System.out.println("h");
-                completionService.take().get();
+                System.out.println(System.currentTimeMillis() + " a: " + i);
+                Future<Void> take = completionService.take();
+                System.out.println(System.currentTimeMillis() + " b: " + i);
+//                if (!take.isCancelled()) {
+                    take.get();
+//                }
+                System.out.println(System.currentTimeMillis() + " c: " + i);
             } catch (InterruptedException e) {
                 /*
                  * Give up - interrupted.
                  */
+                System.out.println(System.currentTimeMillis() + " interrupted");
                 Thread.currentThread().interrupt();
                 throw new RuntimeException(e);
             } catch (ExecutionException e) {
                 /*
                  * The task threw an exception
                  */
-                System.out.println("Execution exception " + e.getMessage());
+                System.out.println(System.currentTimeMillis() + " Execution exception " + e.getMessage());
 //                    complete = true;
-                System.out.println("size: " + results.size());
+
                 for (Future<Void> future : results) {
-                    System.out.println("here");
+                    System.out.println(System.currentTimeMillis() + " here");
                     if (!future.isDone()) {
-                        System.out.println("Cancelling " + future);
+                        System.out.println(System.currentTimeMillis() + " Cancelling " + future);
                         future.cancel(true);
                     }
                 }
+                // TODO: 不取值了，队列是否会有问题？
+                break;
             }
         }
 //        }
