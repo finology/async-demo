@@ -1,21 +1,30 @@
 package gy.finolo.asyncdemo.service.impl;
 
+import com.github.jaiimageio.impl.common.SimpleRenderedImage;
 import gy.finolo.asyncdemo.service.PDFServcie;
+import lombok.AllArgsConstructor;
+import org.apache.pdfbox.cos.COSDocument;
 import org.apache.pdfbox.multipdf.Splitter;
 import org.apache.pdfbox.pdmodel.PDDocument;
+import org.apache.pdfbox.pdmodel.PDPage;
+import org.apache.pdfbox.pdmodel.PDPageTree;
+import org.apache.pdfbox.pdmodel.interactive.pagenavigation.PDThreadBead;
 import org.apache.pdfbox.rendering.PDFRenderer;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.stereotype.Service;
+import org.springframework.util.ResourceUtils;
 import org.springframework.web.multipart.MultipartFile;
 
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Future;
+import java.util.concurrent.*;
 
 /**
  * @description:
@@ -28,8 +37,13 @@ public class PDFServiceImpl implements PDFServcie {
     @Autowired
     private PDFServiceHelper pdfServiceHelper;
 
+    @Qualifier("getAsyncExecutor")
+    @Autowired
+    private ThreadPoolTaskExecutor executor;
+
     @Override
     public void convertSerially(MultipartFile file) {
+        System.setProperty("sun.java2d.cmm", "sun.java2d.cmm.kcms.KcmsServiceProvider");
         long start = System.currentTimeMillis();
         try (PDDocument document = PDDocument.load(file.getInputStream())) {
             int pageCount = document.getNumberOfPages();
@@ -37,7 +51,8 @@ public class PDFServiceImpl implements PDFServcie {
             for (int i = 0; i < pageCount; i++) {
                 System.out.println("processing page: " + i);
                 BufferedImage image = renderer.renderImage(i);
-                ImageIO.write(image, "PNG", new File("D:\\development\\java\\async-demo\\images", i + ".png"));
+                ImageIO.write(image, "PNG", new File(ResourceUtils.getURL("classpath:").getPath(), i +
+                        ".png"));
             }
         } catch (IOException e) {
             System.out.println("convert serially IOException =============== ");
@@ -53,19 +68,17 @@ public class PDFServiceImpl implements PDFServcie {
     }
 
     @Override
-    public void convertConcurrently(MultipartFile file) {
+    public void convertConcurrently(MultipartFile file) throws Exception {
+        System.setProperty("sun.java2d.cmm", "sun.java2d.cmm.kcms.KcmsServiceProvider");
+
         long start = System.currentTimeMillis();
 
         List<Future<String>> futures = new ArrayList<>();
         try (PDDocument document = PDDocument.load(file.getInputStream())) {
             int pageCount = document.getNumberOfPages();
 
-            Splitter splitter = new Splitter();
-            List<PDDocument> pages = splitter.split(document);
-
-            int pageIndex = 0;
-            for (PDDocument page : pages) {
-                Future<String> future = pdfServiceHelper.asyncConvertOnePage(page, pageIndex++);
+            for (int pageIndex = 0; pageIndex < pageCount; pageIndex++) {
+                Future<String> future = pdfServiceHelper.asyncConvertOnePage(file.getInputStream(), pageIndex);
                 futures.add(future);
             }
 
@@ -77,12 +90,15 @@ public class PDFServiceImpl implements PDFServcie {
         } catch (IOException e) {
             e.printStackTrace();
             cancelFutures(futures);
+            throw e;
         } catch (InterruptedException e) {
             e.printStackTrace();
             cancelFutures(futures);
+            throw e;
         } catch (ExecutionException e) {
             e.printStackTrace();
             cancelFutures(futures);
+            throw e;
         }
 
         System.out.println("convertConcurrently cost: " + (System.currentTimeMillis() - start));
@@ -97,40 +113,65 @@ public class PDFServiceImpl implements PDFServcie {
         }
     }
 
+
     @Override
-    public void convertConcurrently2(MultipartFile file) {
+    public void convertByCallable(MultipartFile file) throws Exception {
+        System.setProperty("sun.java2d.cmm", "sun.java2d.cmm.kcms.KcmsServiceProvider");
+
         long start = System.currentTimeMillis();
-
         List<Future<String>> futures = new ArrayList<>();
-
         try (PDDocument document = PDDocument.load(file.getInputStream())) {
+
             int pageCount = document.getNumberOfPages();
 
-            PDFRenderer renderer = new PDFRenderer(document);
-
-            int pageIndex = 0;
             for (int i = 0; i < pageCount; i++) {
-
-                Future<String> future = pdfServiceHelper.asyncConvertOnePage2(renderer, pageIndex++);
-                futures.add(future);
+                ConvertOnePageTask task = new ConvertOnePageTask(file.getInputStream(), i);
+                futures.add(executor.submit(task));
             }
-
             for (Future<String> future : futures) {
-                String res = future.get();
-                System.out.println(res);
+                System.out.println(future.get());
             }
 
         } catch (IOException e) {
             e.printStackTrace();
             cancelFutures(futures);
+            throw e;
         } catch (InterruptedException e) {
             e.printStackTrace();
             cancelFutures(futures);
+            throw e;
         } catch (ExecutionException e) {
             e.printStackTrace();
             cancelFutures(futures);
+            throw e;
         }
 
-        System.out.println("convertConcurrently cost: " + (System.currentTimeMillis() - start));
+        System.out.println("convertByCallable cost: " + (System.currentTimeMillis() - start));
+
     }
+
+    /**
+     * 多线程出错
+     */
+    @AllArgsConstructor
+    private static class ConvertOnePageTask implements Callable<String> {
+
+//        private PDDocument document;
+        private InputStream inputStream;
+        private Integer pageIndex;
+
+        @Override
+        public String call() throws IOException {
+            long start = System.currentTimeMillis();
+
+            try (PDDocument document = PDDocument.load(inputStream)) {
+                PDFRenderer renderer = new PDFRenderer(document);
+                BufferedImage image = renderer.renderImage(pageIndex);
+                ImageIO.write(image, "PNG", new File(ResourceUtils.getURL("classpath:").getPath(), pageIndex + ".png"));
+            }
+
+            return Thread.currentThread().getName() + " convert page: " + pageIndex + " cost " + (System.currentTimeMillis() - start);
+        }
+    }
+
 }

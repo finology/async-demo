@@ -23,17 +23,17 @@ public class PDFController {
      * 顺序执行
      */
     @PostMapping("/serially")
-    public void convertSerially(MultipartFile file) {
+    public void convertSerially(MultipartFile file) throws Exception {
         pdfServcie.convertSerially(file);
     }
 
     @PostMapping("/concurrently")
-    public void convertConcurrently(MultipartFile file) {
+    public void convertConcurrently(MultipartFile file) throws Exception {
         pdfServcie.convertConcurrently(file);
     }
 
-    @PostMapping("/concurrently2")
-    public void convertConcurrently2(MultipartFile file) {
-        pdfServcie.convertConcurrently2(file);
+    @PostMapping("/convertByCallable")
+    public void convertByCallable(MultipartFile file) throws Exception {
+        pdfServcie.convertByCallable(file);
     }
 }

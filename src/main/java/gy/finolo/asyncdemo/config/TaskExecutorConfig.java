@@ -1,11 +1,13 @@
 package gy.finolo.asyncdemo.config;
 
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.scheduling.annotation.AsyncConfigurer;
 import org.springframework.scheduling.annotation.EnableAsync;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 
 import java.util.concurrent.Executor;
+import java.util.concurrent.ExecutorService;
 
 /**
  * @description: 实现多线程和并发编程
@@ -17,11 +19,12 @@ import java.util.concurrent.Executor;
 @EnableAsync
 public class TaskExecutorConfig implements AsyncConfigurer {
 
+    @Bean
     @Override
-    public Executor getAsyncExecutor() {
+    public ThreadPoolTaskExecutor getAsyncExecutor() {
         ThreadPoolTaskExecutor taskExecutor = new ThreadPoolTaskExecutor();
-        taskExecutor.setCorePoolSize(10);
-        taskExecutor.setMaxPoolSize(20);
+        taskExecutor.setCorePoolSize(4);
+        taskExecutor.setMaxPoolSize(16);
         taskExecutor.setQueueCapacity(500);
         taskExecutor.initialize();
         return taskExecutor;
